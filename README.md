@@ -14,7 +14,7 @@ CatBar 是一款 macOS 菜单栏应用，将番茄钟专注计时与虚拟宠物
 
 ## 截图
 
-<!-- TODO: 添加应用截图 -->
+![演示](docs/images/demo.gif)
 
 ## 安装
 
