@@ -98,17 +98,6 @@ struct StatsView: View {
                         .font(.title2)
                         .fontWeight(.bold)
                 }
-
-                Spacer()
-
-                VStack(alignment: .leading) {
-                    Text("解锁猫咪")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("\(catState.unlockedCats.count) / \(CatType.allCases.count)")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                }
             }
             .padding()
             .background(Color.gray.opacity(0.1))

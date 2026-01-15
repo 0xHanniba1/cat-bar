@@ -7,22 +7,6 @@ enum HungerLevel {
     case hungry  // 0-30%
 }
 
-enum CatType: String, Codable, CaseIterable {
-    case orange = "橘猫"
-    case black = "黑猫"
-    case white = "白猫"
-    case cow = "奶牛猫"
-
-    var unlockHours: Double {
-        switch self {
-        case .orange: return 0
-        case .black: return 5
-        case .white: return 15
-        case .cow: return 30
-        }
-    }
-}
-
 class CatState: ObservableObject {
     // 饱食度 0-100
     @Published var satiety: Double {
@@ -31,26 +15,10 @@ class CatState: ObservableObject {
         }
     }
 
-    // 当前选择的猫咪
-    @Published var currentCat: CatType {
-        didSet {
-            UserDefaults.standard.set(currentCat.rawValue, forKey: "currentCat")
-        }
-    }
-
-    // 解锁的猫咪
-    @Published var unlockedCats: Set<CatType> {
-        didSet {
-            let array = unlockedCats.map { $0.rawValue }
-            UserDefaults.standard.set(array, forKey: "unlockedCats")
-        }
-    }
-
     // 累计专注时长（分钟）
     @Published var totalFocusMinutes: Int {
         didSet {
             UserDefaults.standard.set(totalFocusMinutes, forKey: "totalFocusMinutes")
-            checkUnlocks()
         }
     }
 
@@ -103,16 +71,6 @@ class CatState: ObservableObject {
         // 从 UserDefaults 加载数据 - 必须先初始化所有存储属性
         let savedSatiety = UserDefaults.standard.double(forKey: "satiety")
         self.satiety = savedSatiety == 0 ? 100 : savedSatiety // 新用户初始满饱食度
-
-        let catName = UserDefaults.standard.string(forKey: "currentCat") ?? "橘猫"
-        self.currentCat = CatType(rawValue: catName) ?? .orange
-
-        let unlockedArray = UserDefaults.standard.stringArray(forKey: "unlockedCats") ?? ["橘猫"]
-        var cats = Set(unlockedArray.compactMap { CatType(rawValue: $0) })
-        if cats.isEmpty {
-            cats.insert(.orange)
-        }
-        self.unlockedCats = cats
 
         self.totalFocusMinutes = UserDefaults.standard.integer(forKey: "totalFocusMinutes")
         self.totalPomodoros = UserDefaults.standard.integer(forKey: "totalPomodoros")
@@ -200,21 +158,8 @@ class CatState: ObservableObject {
         lastFocusDate = Date()
     }
 
-    private func checkUnlocks() {
-        let totalHours = Double(totalFocusMinutes) / 60
-
-        for catType in CatType.allCases {
-            if totalHours >= catType.unlockHours && !unlockedCats.contains(catType) {
-                unlockedCats.insert(catType)
-                // TODO: 显示解锁通知
-            }
-        }
-    }
-
     func save() {
         UserDefaults.standard.set(satiety, forKey: "satiety")
-        UserDefaults.standard.set(currentCat.rawValue, forKey: "currentCat")
-        UserDefaults.standard.set(Array(unlockedCats.map { $0.rawValue }), forKey: "unlockedCats")
         UserDefaults.standard.set(totalFocusMinutes, forKey: "totalFocusMinutes")
         UserDefaults.standard.set(totalPomodoros, forKey: "totalPomodoros")
         UserDefaults.standard.set(lastFeedTime, forKey: "lastFeedTime")

@@ -5,6 +5,8 @@ struct SettingsView: View {
     @ObservedObject var timerManager: TimerManager
 
     @State private var newDuration: String = ""
+    @State private var debugSatietyText: String = ""
+    @State private var debugLeftInsetText: String = ""
 
     var body: some View {
         Form {
@@ -32,57 +34,22 @@ struct SettingsView: View {
                     }
                 }
 
-                HStack {
-                    TextField("自定义分钟数", text: $newDuration)
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("自定义分钟数")
+                        .frame(width: 110, alignment: .leading)
+                    TextField("例如 25", text: $newDuration)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 120)
-
+                    Spacer()
                     Button("添加") {
                         if let minutes = Int(newDuration), minutes > 0, minutes <= 180 {
                             timerManager.addDuration(minutes)
                             newDuration = ""
                         }
                     }
+                    .buttonStyle(.bordered)
+                    .frame(minWidth: 56)
                     .disabled(Int(newDuration) == nil)
-                }
-            }
-
-            // 猫咪选择
-            Section("选择猫咪") {
-                ForEach(CatType.allCases, id: \.self) { catType in
-                    HStack {
-                        catIcon(for: catType)
-
-                        VStack(alignment: .leading) {
-                            Text(catType.rawValue)
-                                .fontWeight(catState.currentCat == catType ? .bold : .regular)
-
-                            if !catState.unlockedCats.contains(catType) {
-                                Text("需要 \(Int(catType.unlockHours)) 小时专注解锁")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-
-                        Spacer()
-
-                        if catState.unlockedCats.contains(catType) {
-                            if catState.currentCat == catType {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
-                            } else {
-                                Button("选择") {
-                                    catState.currentCat = catType
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundColor(.blue)
-                            }
-                        } else {
-                            Image(systemName: "lock.fill")
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .padding(.vertical, 4)
                 }
             }
 
@@ -102,23 +69,49 @@ struct SettingsView: View {
                         .foregroundColor(.secondary)
                 }
             }
+
+            // 调试
+            Section("调试（测试用）") {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .center, spacing: 12) {
+                        Text("饱食度")
+                            .frame(width: 70, alignment: .leading)
+                        TextField("0-100", text: $debugSatietyText)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 120)
+                        Spacer()
+                        Button("应用") {
+                            if let value = Double(debugSatietyText) {
+                                catState.satiety = max(0, min(100, value))
+                                catState.save()
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    HStack(alignment: .center, spacing: 12) {
+                        Text("左侧起点")
+                            .frame(width: 70, alignment: .leading)
+                        TextField("像素", text: $debugLeftInsetText)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 120)
+                        Spacer()
+                        Button("应用") {
+                            if let value = Double(debugLeftInsetText) {
+                                UserDefaults.standard.set(max(0, value), forKey: "overlayLeftInset")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+
+                Text("用于测试动画状态与跑动范围，重启应用后生效。")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
         }
         .formStyle(.grouped)
         .frame(minWidth: 320)
-    }
-
-    private func catIcon(for type: CatType) -> some View {
-        let emoji: String
-        switch type {
-        case .orange: emoji = "🐱"
-        case .black: emoji = "🐈‍⬛"
-        case .white: emoji = "🐈"
-        case .cow: emoji = "🐄"
-        }
-
-        return Text(emoji)
-            .font(.title2)
-            .grayscale(catState.unlockedCats.contains(type) ? 0 : 1)
     }
 
     private func formatHours(_ minutes: Int) -> String {
