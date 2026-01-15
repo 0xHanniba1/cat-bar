@@ -108,6 +108,10 @@ xcodebuild -project CatBar.xcodeproj -scheme CatBar -configuration Release build
 
 在 Xcode 中打开项目，选择目标设备后点击运行按钮。
 
+## 已知问题
+
+- 猫咪跑动动画存在显示问题，待后续修复
+
 ## 许可证
 
 MIT License

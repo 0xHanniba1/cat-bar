@@ -1,116 +1,45 @@
 import Cocoa
 import SwiftUI
 
-// MARK: - 像素猫视图
-class PixelCatView: NSView {
-    var currentFrame = 0
-    var facingRight = true
-    var pixelSize: CGFloat = 2
+// MARK: - 猫咪速度状态
+enum CatSpeedState: String {
+    case stopped = "cat-stop"      // 饿昏了 (饱食度 < 20%)
+    case slow = "catrun-a"         // 慢速跑 (饱食度 20-50%)
+    case normal = "catrun-b"       // 正常跑 (饱食度 50-70%)
+    case fast = "catrun-c"         // 快速跑 (饱食度 > 70%)
 
-    // 橘猫颜色
-    private let orangeColor = NSColor(red: 1.0, green: 0.6, blue: 0.2, alpha: 1.0)
-    private let blackColor = NSColor.black
-    private let pinkColor = NSColor(red: 1.0, green: 0.6, blue: 0.6, alpha: 1.0)
-
-    // 像素猫跑动帧 (0=透明, 1=橘色, 2=深橘色条纹, 4=黑色眼睛, 5=粉色鼻子)
-    // 侧面跑动的猫：头在左边，尾巴在右边，向右跑
-    private let runFrames: [[[Int]]] = [
-        // 帧1 - 前腿伸出，后腿蹬地
-        [
-            [0,0,1,1,0,0,0,0,0,0,0,0,0,0,0],
-            [0,1,1,1,1,0,0,0,0,0,0,0,1,1,0],
-            [0,1,4,1,1,0,0,0,0,0,0,1,1,1,1],
-            [0,0,1,5,1,0,0,0,0,0,0,0,1,1,0],
-            [0,0,1,1,1,1,1,1,1,1,1,1,1,0,0],
-            [0,0,0,1,1,1,1,1,1,1,1,1,0,0,0],
-            [0,0,0,1,1,1,1,1,1,1,1,0,0,0,0],
-            [0,0,0,1,0,0,0,0,1,0,0,0,0,0,0],
-            [0,0,1,1,0,0,0,0,0,1,0,0,0,0,0],
-        ],
-        // 帧2 - 腿收拢
-        [
-            [0,0,1,1,0,0,0,0,0,0,0,0,0,0,0],
-            [0,1,1,1,1,0,0,0,0,0,0,0,0,1,1],
-            [0,1,4,1,1,0,0,0,0,0,0,0,1,1,1],
-            [0,0,1,5,1,0,0,0,0,0,0,1,1,1,0],
-            [0,0,1,1,1,1,1,1,1,1,1,1,0,0,0],
-            [0,0,0,1,1,1,1,1,1,1,1,0,0,0,0],
-            [0,0,0,1,1,1,1,1,1,1,0,0,0,0,0],
-            [0,0,0,0,1,1,1,1,0,0,0,0,0,0,0],
-            [0,0,0,0,1,0,0,1,0,0,0,0,0,0,0],
-        ],
-        // 帧3 - 腾空
-        [
-            [0,0,1,1,0,0,0,0,0,0,0,0,0,0,0],
-            [0,1,1,1,1,0,0,0,0,0,0,0,0,0,1],
-            [0,1,4,1,1,0,0,0,0,0,0,0,0,1,1],
-            [0,0,1,5,1,0,0,0,0,0,0,0,1,1,0],
-            [0,0,1,1,1,1,1,1,1,1,1,1,1,0,0],
-            [0,0,0,1,1,1,1,1,1,1,1,1,0,0,0],
-            [0,0,0,0,1,1,1,1,1,1,0,0,0,0,0],
-            [0,0,0,1,1,0,0,0,1,1,0,0,0,0,0],
-            [0,0,1,0,0,0,0,0,0,0,1,0,0,0,0],
-        ],
-        // 帧4 - 后腿伸出，前腿收
-        [
-            [0,0,1,1,0,0,0,0,0,0,0,0,0,0,0],
-            [0,1,1,1,1,0,0,0,0,0,0,0,1,1,0],
-            [0,1,4,1,1,0,0,0,0,0,0,0,1,1,1],
-            [0,0,1,5,1,0,0,0,0,0,0,1,1,0,0],
-            [0,0,1,1,1,1,1,1,1,1,1,1,0,0,0],
-            [0,0,0,1,1,1,1,1,1,1,1,0,0,0,0],
-            [0,0,0,1,1,1,1,1,1,1,0,0,0,0,0],
-            [0,0,0,0,1,0,0,0,0,1,1,0,0,0,0],
-            [0,0,0,0,1,0,0,0,0,0,1,1,0,0,0],
-        ],
-    ]
-
-    override var isFlipped: Bool { return true }
-
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-
-        guard currentFrame < runFrames.count else { return }
-
-        let frameData = runFrames[currentFrame]
-
-        for (rowIndex, row) in frameData.enumerated() {
-            for (colIndex, pixel) in row.enumerated() {
-                if pixel == 0 { continue }
-
-                let color: NSColor
-                switch pixel {
-                case 1: color = orangeColor
-                case 4: color = blackColor
-                case 5: color = pinkColor
-                default: continue
-                }
-
-                color.setFill()
-
-                let x: CGFloat
-                if facingRight {
-                    x = CGFloat(colIndex) * pixelSize
-                } else {
-                    x = CGFloat(row.count - 1 - colIndex) * pixelSize
-                }
-                let y = CGFloat(rowIndex) * pixelSize
-
-                let rect = NSRect(x: x, y: y, width: pixelSize, height: pixelSize)
-                rect.fill()
-            }
+    // 图片总宽度
+    var totalWidth: CGFloat {
+        switch self {
+        case .stopped: return 112
+        case .slow: return 56
+        case .normal: return 63
+        case .fast: return 84
         }
     }
 
-    func nextFrame() {
-        currentFrame = (currentFrame + 1) % runFrames.count
-        needsDisplay = true
+    // 帧数
+    var frameCount: Int {
+        switch self {
+        case .stopped: return 5     // cat-stop: 112px
+        case .slow: return 4        // catrun-a: 56px
+        case .normal: return 5      // catrun-b: 63px (约12.6px每帧)
+        case .fast: return 5        // catrun-c: 84px (约16.8px每帧)
+        }
     }
 
-    func setDirection(right: Bool) {
-        if facingRight != right {
-            facingRight = right
-            needsDisplay = true
+    // 每帧的宽度
+    var frameWidth: CGFloat {
+        return totalWidth / CGFloat(frameCount)
+    }
+
+    // 动画速度（秒/帧）
+    var animationInterval: TimeInterval {
+        switch self {
+        case .stopped: return 0.3
+        case .slow: return 0.15
+        case .normal: return 0.1
+        case .fast: return 0.07
         }
     }
 }
@@ -121,171 +50,168 @@ class StatusBarController: NSObject {
     private var catState: CatState
     private var timerManager: TimerManager
     private var animationTimer: Timer?
-    private var positionTimer: Timer?
 
-    // 猫咪窗口（覆盖在菜单栏上）
-    private var catWindow: NSWindow!
-    private var catView: PixelCatView!
+    // 动画状态
+    private var currentFrame = 0
+    private var currentSpeedState: CatSpeedState = .fast
 
-    // 猫咪位置和方向
-    private var catPosition: CGFloat = 100
-    private var movingRight = true
-    private var catSpeed: CGFloat = 3.0
+    // 缓存的帧图片
+    private var frameImages: [CatSpeedState: [NSImage]] = [:]
 
-    // 弹出菜单
+    // 弹出窗口
     private var statsWindow: NSWindow?
     private var settingsWindow: NSWindow?
-
-    // 屏幕边界
-    private var minX: CGFloat = 0
-    private var maxX: CGFloat = 0
 
     init(catState: CatState, timerManager: TimerManager) {
         self.catState = catState
         self.timerManager = timerManager
         super.init()
 
+        loadFrameImages()
         setupStatusBar()
-        setupCatWindow()
-        startAnimations()
+        startAnimation()
     }
 
+    // MARK: - 加载帧图片
+    private func loadFrameImages() {
+        for state in [CatSpeedState.stopped, .slow, .normal, .fast] {
+            if let spriteSheet = NSImage(named: state.rawValue) {
+                var frames: [NSImage] = []
+                let frameWidth = state.frameWidth
+                let frameCount = state.frameCount
+                let height = spriteSheet.size.height
+
+                // 从精灵图中切分每一帧
+                for i in 0..<frameCount {
+                    let frameRect = NSRect(x: CGFloat(i) * frameWidth, y: 0, width: frameWidth, height: height)
+                    let frameImage = NSImage(size: NSSize(width: frameWidth, height: height))
+                    frameImage.lockFocus()
+                    spriteSheet.draw(in: NSRect(x: 0, y: 0, width: frameWidth, height: height),
+                                    from: frameRect,
+                                    operation: .copy,
+                                    fraction: 1.0)
+                    frameImage.unlockFocus()
+                    frames.append(frameImage)
+                }
+
+                frameImages[state] = frames
+            }
+        }
+    }
+
+    // MARK: - 设置状态栏
     private func setupStatusBar() {
-        // 状态栏只显示倒计时和菜单入口
+        // 创建状态栏项目，使用固定宽度
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem.button {
-            button.title = "🐱"
+            button.imagePosition = .imageLeft
             button.action = #selector(statusBarButtonClicked(_:))
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+
+            // 设置初始图片
+            updateButtonImage()
         }
     }
 
-    private func setupCatWindow() {
-        // 获取主屏幕
-        guard let screen = NSScreen.main else { return }
+    // MARK: - 更新按钮图片
+    private func updateButtonImage() {
+        guard let button = statusItem.button,
+              let frames = frameImages[currentSpeedState],
+              !frames.isEmpty else { return }
 
-        let menuBarHeight: CGFloat = 24
-        let catWidth: CGFloat = 30  // 15像素 * 2
-        let catHeight: CGFloat = 18 // 9像素 * 2
+        let safeFrame = currentFrame % frames.count
+        let image = frames[safeFrame]
 
-        // 计算边界（留出一些边距）
-        minX = 10
-        maxX = screen.frame.width - 100  // 留出状态栏图标的空间
+        // 缩放图片以适应菜单栏（高度约18px）
+        let targetHeight: CGFloat = 18
+        let scale = targetHeight / image.size.height
+        let targetWidth = image.size.width * scale
 
-        // 创建透明窗口，覆盖在菜单栏上
-        let windowRect = NSRect(
-            x: catPosition,
-            y: screen.frame.height - menuBarHeight,
-            width: catWidth,
-            height: catHeight
-        )
+        let scaledImage = NSImage(size: NSSize(width: targetWidth, height: targetHeight))
+        scaledImage.lockFocus()
+        image.draw(in: NSRect(x: 0, y: 0, width: targetWidth, height: targetHeight),
+                   from: NSRect(origin: .zero, size: image.size),
+                   operation: .copy,
+                   fraction: 1.0)
+        scaledImage.unlockFocus()
 
-        catWindow = NSWindow(
-            contentRect: windowRect,
-            styleMask: .borderless,
-            backing: .buffered,
-            defer: false
-        )
+        button.image = scaledImage
 
-        // 设置窗口属性
-        catWindow.isOpaque = false
-        catWindow.backgroundColor = .clear
-        catWindow.level = .statusBar  // 和状态栏同层级
-        catWindow.collectionBehavior = [.canJoinAllSpaces, .stationary]
-        catWindow.ignoresMouseEvents = true  // 鼠标穿透
-
-        // 创建像素猫视图
-        catView = PixelCatView(frame: NSRect(x: 0, y: 0, width: catWidth, height: catHeight))
-        catView.pixelSize = 2
-
-        catWindow.contentView?.addSubview(catView)
-        catWindow.orderFront(nil)
+        // 更新标题（显示状态信息）
+        updateButtonTitle()
     }
 
-    private func startAnimations() {
-        // 猫咪跑动动画（帧切换）- 快速切换模拟跑步
-        animationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            self?.updateCatFrame()
-        }
-
-        // 猫咪位置移动 - 流畅移动
-        positionTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in
-            self?.updateCatPosition()
-        }
-    }
-
-    private func updateCatFrame() {
-        catView.nextFrame()
-        catView.setDirection(right: movingRight)
-    }
-
-    private func updateCatPosition() {
-        // 根据饥饿状态调整速度
-        switch catState.hungerLevel {
-        case .full:
-            catSpeed = 2.0
-        case .normal:
-            catSpeed = 1.2
-        case .hungry:
-            catSpeed = 0.5
-        }
-
-        // 移动猫咪
-        if movingRight {
-            catPosition += catSpeed
-            if catPosition >= maxX {
-                movingRight = false
-                catView.setDirection(right: false)
-            }
-        } else {
-            catPosition -= catSpeed
-            if catPosition <= minX {
-                movingRight = true
-                catView.setDirection(right: true)
-            }
-        }
-
-        // 更新窗口位置
-        var frame = catWindow.frame
-        frame.origin.x = catPosition
-        catWindow.setFrame(frame, display: true)
-
-        // 更新状态栏显示
-        updateStatusBarDisplay()
-    }
-
-    private func updateStatusBarDisplay() {
+    // MARK: - 更新按钮标题
+    private func updateButtonTitle() {
         guard let button = statusItem.button else { return }
 
-        var displayText = ""
+        var title = ""
 
-        // 如果有待领取的食物
         if catState.pendingFood {
-            displayText = "🐟 点击喂食"
+            title = " 🐟"
         } else if timerManager.isRunning {
-            // 显示倒计时
-            displayText = "⏱ \(timerManager.formattedTimeRemaining)"
-        } else {
-            displayText = "🐱"
+            title = " \(timerManager.formattedTimeRemaining)"
         }
 
-        // 如果猫咪饿了
-        if catState.hungerLevel == .hungry {
-            displayText += " 😿"
+        if catState.satiety < 30 {
+            title += " 😿"
         }
 
-        button.title = displayText
+        button.title = title
     }
 
+    // MARK: - 开始动画
+    private func startAnimation() {
+        updateSpeedState()
+        restartAnimationTimer()
+    }
+
+    private func restartAnimationTimer() {
+        animationTimer?.invalidate()
+        animationTimer = Timer.scheduledTimer(withTimeInterval: currentSpeedState.animationInterval, repeats: true) { [weak self] _ in
+            self?.advanceFrame()
+        }
+    }
+
+    private func advanceFrame() {
+        // 检查是否需要更新速度状态
+        let oldState = currentSpeedState
+        updateSpeedState()
+
+        if oldState != currentSpeedState {
+            currentFrame = 0
+            restartAnimationTimer()
+        }
+
+        // 推进帧
+        if let frames = frameImages[currentSpeedState] {
+            currentFrame = (currentFrame + 1) % frames.count
+        }
+
+        updateButtonImage()
+    }
+
+    private func updateSpeedState() {
+        if catState.satiety < 20 {
+            currentSpeedState = .stopped
+        } else if catState.satiety < 50 {
+            currentSpeedState = .slow
+        } else if catState.satiety < 70 {
+            currentSpeedState = .normal
+        } else {
+            currentSpeedState = .fast
+        }
+    }
+
+    // MARK: - 点击处理
     @objc private func statusBarButtonClicked(_ sender: NSStatusBarButton) {
         let event = NSApp.currentEvent!
 
         if event.type == .rightMouseUp {
             showMainMenu()
         } else {
-            // 左键点击
             if catState.pendingFood {
                 feedCat()
             } else {
@@ -297,9 +223,10 @@ class StatusBarController: NSObject {
     private func feedCat() {
         catState.feed()
         NSSound(named: "Pop")?.play()
-        updateStatusBarDisplay()
+        updateButtonTitle()
     }
 
+    // MARK: - 菜单
     private func showMainMenu() {
         let menu = NSMenu()
 
@@ -355,12 +282,12 @@ class StatusBarController: NSObject {
     @objc private func startFocus(_ sender: NSMenuItem) {
         let duration = sender.tag
         timerManager.start(minutes: duration)
-        updateStatusBarDisplay()
+        updateButtonTitle()
     }
 
     @objc private func cancelFocus() {
         timerManager.cancel()
-        updateStatusBarDisplay()
+        updateButtonTitle()
     }
 
     @objc private func showStats() {
